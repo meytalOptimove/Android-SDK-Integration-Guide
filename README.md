@@ -11,6 +11,7 @@ While supporting a constantly rising number of products, the SDK's API is guaran
 During integration the application's development team must provide Optimove with:
 * The **_app's package_**
 * The **_SHA256 cert fingerprint_** (can be retrieved using: `keytool -list -v -keystore my-release-key.keystore`)
+* The app's min (Android) SDK version is 19
 
 A **_Tenant token_** is provided during the initial integration with Optimove. That token must be available to the application's developer before installing and integrating the SDK into the app.<br>
 The tenant token contains the following information:
