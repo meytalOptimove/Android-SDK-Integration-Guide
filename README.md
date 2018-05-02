@@ -1,7 +1,7 @@
 # Optimove Android SDK Integration
 
 Optimove's Android SDK for native apps is a general-purpose suite of tools that is built to support multiple Optimove products.<br>
-The SDK is designed with careful consideration of the unpredicted behavior of the Mobile user and Mobile environment, taking into account limited to no networking and low battery or memory limitations.<br>
+The SDK is designed with careful consideration of the unpredicted behavior of the Mobile user and Mobile environment, taking into account limited to no network connection and low battery or memory limitations.<br>
 While supporting a constantly rising number of products, the SDK's API is guaranteed to be small, coherent and clear.
 
 ## Getting Started
@@ -37,7 +37,7 @@ ___
 1. Open the **app's** `build.gradle` file (located under the application's _app module folder_).
 2. Under `dependencies`, add the following:
 ```javascript
-compile 'com.optimove.sdk:optimove-sdk:1.0.0'
+compile 'com.optimove.sdk:optimove-sdk:1.1.0'
 ```
 
 ### Running the SDK
@@ -83,59 +83,48 @@ public class MyApplication extends Application {
 ## State Registration
 
 The SDK initialization process occurs asynchronously, off the `Main UI Thread`.<br>
-Before calling the Public API methods, make sure that the SDK has finished initialization by calling the `registerStateListener` method with an instance of `OptimoveStateListener`.<br>
->If the object implementing the `OptimoveStateListener` is a component with a _"Lifecycle"_ (i.e. `Activity` or `Fragment`), **_always_** unregister that object at the `onStop()` callback to prevent memory leaks.<br>
+Before calling the Public API methods, make sure that the SDK has finished initialization by calling the `registerSuccessStateListener` method with an instance of `OptimoveSuccessStateListener`.<br>
+>If the object implementing the `OptimoveSuccessStateListener` is a component with a _"Lifecycle"_ (i.e. `Activity` or `Fragment`), **_always_** unregister that object at the `onStop()` callback to prevent memory leaks.<br>
 
 ```java
-public class MainActivity extends AppCompatActivity implements OptimoveStateListener {
+public class MainActivity extends AppCompatActivity implements OptimoveSuccessStateListener {
 
   @Override
   protected void onStart() {
 
     super.onStart();
-    Optimove.getInstance().registerStateListener(this);
+    Optimove.getInstance().registerSuccessStateListener(this);
   }
 
   @Override
   protected void onStop() {
 
     super.onStop();
-    Optimove.getInstance().unregisterStateListener(this);
+    Optimove.getInstance().unregisterSuccessStateListener(this);
   }
 
   @Override
-  public void onConfigurationStarted() {
-    
-  }
-
-  @Override
-  public void onConfigurationSucceed(MissingPermissions... missingPermissions) {
-
+  public void onConfigurationSucceed(OptimoveDeviceRequirement... missingPermissions) {
     //If appropriate, ask for permissions here
-    //Do any call to the Optimove SDK safely in here
-  }
-
-  @Override
-  public void onConfigurationFailed(OptimoveStateListener.Error... errors) {
-
-    Log.d("OptimoveSDK", Arrays.deepToString(errors));
+    //Do any call to the Optimove SDK safely from here on out
   }
 }
 ```
 
-### Initialization Errors
-If during initialization the SDK fatal errors it calls the `onConfigurationFailed(OptimoveStateListener.Error... errors)`. Most of the error are **unrecoverable** (e.g. no network, internal error). However, some can and should be handled by the hosting app, at the appropriate manner and time.<br>
-Those cases are described in the **_Special Use Cases_** section.
-
 ### Missing Optional Permissions
-Once the SDK has finished initializing successfully, it passes all **non-vital missing permissions** in the `onConfigurationSucceed(MissingPermissions... missingPermissions)`. These permissions can enhance the _user experience_ but are not vital to the SDK's functionality.
+Once the SDK has finished initializing successfully, it passes all **User Dependent missing permissions** through the `onConfigurationSucceed(OptimoveDeviceRequirement... missingPermissions)`. These permissions are important to the _user experience_ but do not block the SDK's proper operation.<br>
+These Permission are:
+* `DRAW_NOTIFICATION_OVERLAY` - Indicates that the app is not allowed to display a "_drop down_" notification banner when a new notification arrives.
+* `NOTIFICATIONS` - Indicates that the user has opted-out from the app's notification
+* `GOOGLE_PLAY_SERVICES` - Indicates that the `Google Play Services` app on the user's device is either missing or outdated 
+* `ADVERTISING_ID` - Indicates that the user has opted-out from allowing apps from accessing his/her **Advertising ID**
 
 ## Analytics
 Using the Optimove's Android SDK, the hosting application can track events with analytical significance.<br>
 These events can range from basic _**`Screen Visits`**_ to _**`Visitor Conversion`**_ and _**`Custom Events`**_ defined in the `Optimove Configuration`.<br>
 
 ### Set User ID
-Once the user has downloaded the application and the SDK run for the first time, the user is considered a _Visitor_, an unknown user.<br>
+Once the user has downloaded the application and the SDK run for the first time, the user is considered a _Visitor_ - an **unknown** user.<br>
 At a certain point the user will authenticate and will become identified by a known `PublicCustomerId`, then the user is considered _Customer_.<br>
 Pass that `CustomerId` to the `Optimove` singleton as soon as the authentication occurs.<br>
 >Note: the `CustomerId` is usually delivered by the Server App that manages customers, and is integrated with Optimove Data Transfer.<br>
@@ -149,8 +138,7 @@ To target which screens the user has visited in the app, call the `reportScreenV
 ```java
 public class MainActivity extends AppCompatActivity {
   @Override
-  public void onConfigurationSucceed() {
-
+  public void onConfigurationSucceed(OptimoveDeviceRequirement... missingPermissions) {
     Optimove.getInstance().reportScreenVisit(this, "Main");
   }
 }
@@ -158,8 +146,7 @@ public class MainActivity extends AppCompatActivity {
 ```java
 public class CheckoutFragment extends Fragment {
   @Override
-  public void onConfigurationSucceed() {
-
+  public void onConfigurationSucceed(OptimoveDeviceRequirement... missingPermissions) {
     Optimove.getInstance().reportScreenVisit("Main/Footwear/Boots/ConfirmOrder", "Checkout");
   }
 }
@@ -171,12 +158,13 @@ The interface defines 2 methods:
 1. `String getName()` - Declares the custom event's name
 2. `Map<String, Object> getParameters()` - Defines the custom event's parameters.
 Then send that event through the `reportEvent` method of the `Optimove` singleton.
->Note: Any _**`Custom Event`**_ must be declared in the _Tenant Configurations_. <br>
-_**`Custom Event`**_ reporting is only supported when OptiTrack Feature is enabled.
+>To enable _Custom Events reporting_ pass the desired events' structure to the Optimove Integration team so that they can be added to the _Tenant Configurations_.<br>
+
+>_**`Custom Event`**_ reporting is only supported when OptiTrack Feature is enabled.
 
 ```java
 
-public class MainActivity extends AppCompatActivity implements OptimoveStateListener {
+public class MainActivity extends AppCompatActivity implements OptimoveSuccessStateListener {
 
   public void onClick(View view) {
     MyCustomEvent event = new MyCustomEvent(12, "diamond");
@@ -244,7 +232,6 @@ public class MyTargetedActivity extends AppCompatActivity implements LinkDataExt
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
-
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_employee_page);
     new DeepLinkHandler(getIntent()).extractLinkData(this);
@@ -252,26 +239,32 @@ public class MyTargetedActivity extends AppCompatActivity implements LinkDataExt
 
   @Override
   public void onDataExtracted(Map<String, String> data) {
-
     //Do any custom behavior according to the provided data Map
   }
 
   @Override
   public void onErrorOccurred(LinkDataError error) {
-
     //Handle errors in any way fitted
   }
 }
 ```
 
 ### Test Optipush Templates
-It might be desired to test an **_Optipush Template_** on an actual device before creating an **_Optipush Campaign_**. To enable _"test campaigns"_ on one or more devices, call the _**`Optimove.getInstance().startTestMode();`**_ method. To stop receiving _"test campaigns"_ call the _**`Optimove.getInstance().stopTestMode();`**_.
-```java
-public class MainActivity extends AppCompatActivity implements OptimoveStateListener {
+It might be desired to test an **_Optipush Template_** on an actual device before creating an **_Optipush Campaign_**. To enable _"test campaigns"_ on one or more devices, call the<br>_**`Optimove.getInstance().startTestMode(@Nullable SdkOperationListener operationListener);`**_<br>method. To stop receiving _"test campaigns"_ call the<br>_**`Optimove.getInstance().stopTestMode(@Nullable SdkOperationListener operationListener);`**_.
 
-  public void startTestModeClickListener(View view) {
-    
-    Optimove.getInstance().startTestMode();
+>The _Test Mode_ is meant to run only on test devices. Make sure to **NEVER** publish an app with test mode.
+
+```java
+public class MainActivity extends AppCompatActivity implements OptimoveSuccessStateListener {
+
+  public void startTestModeClickListener() {
+    Optimove.getInstance().startTestMode(success -> {
+      if (success) {
+        Toast.makeText(this, "Test Mode is ON", Toast.LENGTH_SHORT).show();
+      } else {
+        Toast.makeText(this, "Failed to start Test Mode", Toast.LENGTH_SHORT).show();
+      }
+    });
   }
 
   @Override
@@ -279,7 +272,13 @@ public class MainActivity extends AppCompatActivity implements OptimoveStateList
 
     super.onStop();
     //Can be called even if test mode was not really started
-    Optimove.getInstance().stopTestMode();
+    Optimove.getInstance().stopTestMode(success -> {
+      if (success) {
+        Toast.makeText(this, "Test Mode is OFF", Toast.LENGTH_SHORT).show();
+      } else {
+        Toast.makeText(this, "Failed to stop Test Mode", Toast.LENGTH_SHORT).show();
+      }
+    });
   }
 }
 ```
@@ -332,17 +331,16 @@ If the **_Main Activity_** (i.e. has `<intent-filter>` with `<action android:nam
 
   @Override
   public void onDataExtracted(Map<String, String> data) {
-
     //Do any custom behavior according to the provided data Map
   }
 
   @Override
   public void onErrorOccurred(LinkDataError error) {
-
     //Handle errors in any way fitted
   }
 }
 ```
+___
 
 ### The Hosting Application Uses Firebase
 
@@ -354,10 +352,10 @@ Therefor, it is highly recommended to match the application's **_Firebase SDK ve
 
 | Optimove SDK Version | Firebase SDK Version |
 | -------------------- | -------------------- |
-| 1.0.7                | 11.8.0               |
+| 1.1.0                | 11.8.0               |
 
 #### <br> Multiple FirebaseMessagingServices
-When the hosting app also utilizes Firebase Cloud Messaging and implements the **_`FirebaseMessagingService`_** Android's **_Service Priority_** kicks in. Therefor, the app developer **must** call explicitly to the `OptipushMessagingHandler`.
+When the hosting app also utilizes Firebase Cloud Messaging and implements the **_`FirebaseMessagingService`_** Android's **_Service Priority_** kicks in, and Optimove SDK's own **_`FirebaseMessagingService`_** is never called. For that reason, the hosting app **must** call explicitly Optimove's `onMessageReceived` callback.
 
 ```java
 public class MyMessagingService extends FirebaseMessagingService {
@@ -370,7 +368,49 @@ public class MyMessagingService extends FirebaseMessagingService {
 }
 ```
 
+#### <br> Multiple FirebaseInstanceIdService
+When the hosting app implements the **_`FirebaseInstanceIdService`_** Android's **_Service Priority_** kicks in, and Optimove SDK's own **_`FirebaseInstanceIdService`_** is never called. For that reason, the hosting app **must** call explicitly Optimove's `onTokenRefresh` callback.
+
+```java
+public class MyFirebaseInstanceIdService extends FirebaseInstanceIdService {
+
+    @Override
+    public void onTokenRefresh() {
+        super.onTokenRefresh();
+        new FcmTokenHandler().onTokenRefresh();
+    }
+}
+```
+
 #### <br> FirebaseApp Initialization Order
 
 Usually when using **_Firebase_** it takes care of its own initialization. However, there are cases in which it is desired to initialize the **_default FirebaseApp_** manually. <br>
 In these special cases, be advised that calling the `Optimove.configure` before the `FirebaseApp.initializeApp` leads to a `RuntimeException` since the **_default FirebaseApp_** must be initialized before any other **_secondary FirebaseApp_**, which in this case would be triggered by the _Optimove Android SDK_.
+
+___
+
+### The Hosting Application Specifies Rules for Automatic Backup
+
+Starting from API `23` Android offers the _Auto Backup for Apps_ feature as a way to back up and restore the user's data in the app. The Optimove SDK depends on some local files being **deleted** once the app is uninstalled.<br>
+For that reason if the hosting app also defines `android:fullBackupContent="@xml/app_backup_rules"` in the **_manifest.xml_** file, Android will raise a **merge conflict**.<br>
+Follow these steps to resolve the conflict and maintain the data integrity of the Optimove SDK:
+1. Add `tools:replace="android:fullBackupContent">` to the `application` tag
+2. Copy the content of the `optimove_backup_rules.xml` to your **_full-backup-content xml_**.
+
+
+>For more information about _Android Automatic Backup_ checkout [this Developer's Guide](https://developer.android.com/guide/topics/data/autobackup.html) article
+
+___
+
+### The Hosting Application uses Java 7
+
+Optimove's Android SDK uses the `Java 8`. If the hosting app still uses `Java 7` some build errors might occur. In that case migrate the app to `Java 8`. It is simple and enables new and useful language features.
+
+>For more information about _Android Official Java 8 Support_ checkout [this Developer's Guide](https://developer.android.com/studio/write/java8-support) article
+
+```javascript
+compileOptions {
+    targetCompatibility 1.8
+    sourceCompatibility 1.8
+}
+```

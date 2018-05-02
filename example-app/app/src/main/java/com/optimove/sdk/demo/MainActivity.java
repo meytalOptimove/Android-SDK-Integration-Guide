@@ -7,16 +7,17 @@ import android.support.design.widget.BaseTransientBottomBar;
 import android.support.design.widget.Snackbar;
 import android.support.design.widget.TextInputEditText;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.optimove.sdk.optimove_sdk.device_state.OptimoveDeviceRequirement;
 import com.optimove.sdk.optimove_sdk.main.Optimove;
-import com.optimove.sdk.optimove_sdk.main.OptimoveStateListener;
+import com.optimove.sdk.optimove_sdk.main.OptimoveSuccessStateListener;
 import com.optimove.sdk.optimove_sdk.optitrack.EventSentResult;
 import com.optimove.sdk.optimove_sdk.optitrack.OptimoveEvent;
-import com.optimove.sdk.optimove_sdk.optitrack.OptimoveEventSentListener;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -40,14 +41,14 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
-        Optimove.getInstance().registerStateListener(optimoveStateListener);
+        Optimove.getInstance().registerSuccessStateListener(optimoveStateListener);
     }
 
     @Override
     protected void onStop() {
         super.onStop();
         //To prevent memory leaks when device configurations change, don't forget to unregister!
-        Optimove.getInstance().unregisterStateListener(optimoveStateListener);
+        Optimove.getInstance().unregisterSuccessStateListener(optimoveStateListener);
     }
 
     private void setupCustomEvents() {
@@ -69,28 +70,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * To be sure that any call to the SDK is called only after the SDK has started, we must implement a {@link OptimoveStateListener}.
+     * To be sure that any call to the SDK is called only after the SDK has started, we must implement a {@link OptimoveSuccessStateListener}.
      */
-    private class MyOptimoveStateListener implements OptimoveStateListener {
+    private class MyOptimoveStateListener implements OptimoveSuccessStateListener {
 
         @Override
-        public void onConfigurationStarted() {
-
-            isOptimoveAvailable = false;
-        }
-
-        @Override
-        public void onConfigurationSucceed(MissingPermissions... missingPermissions) {
-
+        public void onConfigurationSucceed(OptimoveDeviceRequirement... missingPermissions) {
             //This is where we can handle any missing permissions and ask the user to provide us with them
             isOptimoveAvailable = true;
-        }
-
-        @Override
-        public void onConfigurationFailed(Error... errors) {
-
-            //This is where we can try to recover from any recoverable errors such as GOOGLE_PLAY_SERVICES_MISSING
-            isOptimoveAvailable = false;
         }
     }
 
@@ -139,18 +126,8 @@ public class MainActivity extends AppCompatActivity {
         }
 
         private void submitCustomEvent(OptimoveEvent event) {
-
-            Optimove.getInstance().reportEvent(event, new OptimoveEventSentListener() {
-                @Override
-                public void onResponse(EventSentResult result) {
-
-                    String resultMsg = "Event Reported!";
-                    //Event reporting can fail. Make sure it didn't
-                    if (result != EventSentResult.SUCCESS)
-                        resultMsg = String.format("Event validation failed due to %s", result.toString());
-                    Snackbar.make(rootView, resultMsg, BaseTransientBottomBar.LENGTH_SHORT).show();
-                }
-            });
+            Optimove.getInstance().reportEvent(event);
+            // The event will now be validated and reported asynchronously - check
         }
     }
 
@@ -216,11 +193,21 @@ public class MainActivity extends AppCompatActivity {
             boolean testModeToggled = sp.getBoolean("test_mode_toggled", false);
 
             if (testModeToggled) {
-                Optimove.getInstance().stopTestMode();
-                sp.edit().putBoolean("test_mode_toggled", false).apply();
+                Optimove.getInstance().stopTestMode(success -> {
+                    if (success) {
+                        sp.edit().putBoolean("test_mode_toggled", false).apply();
+                    } else {
+                        Log.e("TEST_MODE_TOGGLE", "Failed to stop test mode");
+                    }
+                });
             } else {
-                Optimove.getInstance().startTestMode();
-                sp.edit().putBoolean("test_mode_toggled", true).apply();
+                Optimove.getInstance().startTestMode(success -> {
+                    if (success) {
+                        sp.edit().putBoolean("test_mode_toggled", true).apply();
+                    } else {
+                        Log.e("TEST_MODE_TOGGLE", "Failed to start test mode");
+                    }
+                });
             }
 
             updateTestModeOutput();
