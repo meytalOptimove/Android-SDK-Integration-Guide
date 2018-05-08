@@ -37,7 +37,7 @@ ___
 1. Open the **app's** `build.gradle` file (located under the application's _app module folder_).
 2. Under `dependencies`, add the following:
 ```javascript
-compile 'com.optimove.sdk:optimove-sdk:1.1.0'
+implementation 'com.optimove.sdk:optimove-sdk:1.1.0'
 ```
 
 ### Running the SDK
@@ -71,7 +71,7 @@ public class MyApplication extends Application {
   public void onCreate() {
 
     super.onCreate();
-    TenantInfo tenantInfo = new TenantInfo("https://optimove.mobile.demo/sdk-configs/", //The initEndPointUrl
+    TenantInfo tenantInfo = new TenantInfo("https://optimove.mobile.demo/", //The initEndPointUrl
                                               "abcdefg12345678", //The token
                                               "myapp.android.1.0.0", //The config name
                                               false); //Has Firebase
@@ -408,9 +408,11 @@ Optimove's Android SDK uses the `Java 8`. If the hosting app still uses `Java 7`
 
 >For more information about _Android Official Java 8 Support_ checkout [this Developer's Guide](https://developer.android.com/studio/write/java8-support) article
 
+Add the following to the app module's `build.gradle` file, under the `android` object.
+
 ```javascript
 compileOptions {
-    targetCompatibility 1.8
-    sourceCompatibility 1.8
+    sourceCompatibility JavaVersion.VERSION_1_8
+    targetCompatibility JavaVersion.VERSION_1_8
 }
 ```
