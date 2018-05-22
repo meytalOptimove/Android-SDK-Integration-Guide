@@ -402,9 +402,9 @@ Follow these steps to resolve the conflict and maintain the data integrity of th
 
 ___
 
-### The Hosting Application uses Java 7
+### Migrate to Java 8 – As Supported by Android
 
-Optimove's Android SDK uses the `Java 8`. If the hosting app still uses `Java 7` some build errors might occur. In that case migrate the app to `Java 8`. It is simple and enables new and useful language features.
+Optimove's Android SDK uses the `Java 8`. If the hosting app still uses `Java 7` or `Jack` some build errors might occur. In that case migrate the app to `Java 8`. It is fast, simple and enables new and useful language features.
 
 >For more information about _Android Official Java 8 Support_ checkout [this Developer's Guide](https://developer.android.com/studio/write/java8-support) article
 
