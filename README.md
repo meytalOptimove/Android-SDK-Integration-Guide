@@ -355,15 +355,21 @@ Therefor, it is highly recommended to match the application's **_Firebase SDK ve
 | 1.1.0                | 11.8.0               |
 
 #### <br> Multiple FirebaseMessagingServices
-When the hosting app also utilizes Firebase Cloud Messaging and implements the **_`FirebaseMessagingService`_** Android's **_Service Priority_** kicks in, and Optimove SDK's own **_`FirebaseMessagingService`_** is never called. For that reason, the hosting app **must** call explicitly Optimove's `onMessageReceived` callback.
+When the hosting app also utilizes Firebase Cloud Messaging and implements the **_`FirebaseMessagingService`_** Android's **_Service Priority_** kicks in, and Optimove SDK's own **_`FirebaseMessagingService`_** is never called. For that reason, the hosting app **must** call explicitly Optimove's `onMessageReceived` callback.<br>
+The `onMessageReceived` method returns *`true`* if the push message was intended for the **Optimove SDK**
 
 ```java
 public class MyMessagingService extends FirebaseMessagingService {
 
     @Override
     public void onMessageReceived(RemoteMessage remoteMessage) {
-        super.onMessageReceived(remoteMessage);
-        new OptipushMessagingHandler(this).onMessageReceived(remoteMessage);
+      super.onMessageReceived(remoteMessage);
+      boolean wasOptipushMessage = new OptipushMessagingHandler(this).onMessageReceived(remoteMessage);
+      if (wasOptipushMessage) {
+        // You should not attempt to present a notification at this point.
+        return;
+      }
+      // The notification was meant for the App, perform your push logic here
     }
 }
 ```
